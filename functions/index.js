@@ -74,4 +74,45 @@ app.get('/api/read/:product_id', (req, res) => {
   })();
 })
 
+app.get('/api/read', (req, res) => {
+  (async () => {
+    try {
+      let query = db.collection('products');
+      let response = [];
+      await query.get()
+        .then(snapshot => {
+          snapshot.forEach(async(doc) => {
+            const selectedItem = {
+              product_id: doc.id,
+              product_name: doc.data().product_name
+            };
+            selectedItem.data = new Object();
+            const subcollection = query.doc(doc.id).collection('data');
+            await subcollection.get()
+              .then(snapshot => {
+                snapshot.forEach(doc => {
+                  const { id } = doc;
+                  const { inventory_level } = doc.data();
+                  selectedItem.data[id] = parseInt(inventory_level);
+                });
+                response.push(selectedItem);
+                return null;
+              })
+              .then(() => {
+                return res.status(200).send(response);
+              })
+              .catch(err => {
+                console.log('Error getting documents', err);
+              });
+          });
+          return null;
+        })
+    }
+    catch(err) {
+      console.log(err);
+      return res.status(500).send(err);
+    }
+  })();
+})
+
 exports.app = functions.https.onRequest(app);
