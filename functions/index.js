@@ -20,4 +20,99 @@ admin.initializeApp({
 });
 const db = admin.firestore();
 
+app.post('/api/create', (req, res) => {
+  (async () => {
+    const { product_id, product_name, date, inventory_level } = req.body
+    try {
+      await db.collection('products').doc(product_id).set({
+        product_name
+      });
+      await db
+        .collection('products').doc(product_id)
+        .collection('data').doc(date)
+        .set({
+          inventory_level
+        })
+      return res.status(200).send();
+    }
+    catch(err) {
+      console.log(err);
+      return res.status(500).send(err);
+    }
+  })();
+});
+
+app.get('/api/read/:product_id', (req, res) => {
+  (async () => {
+    const { product_id } = req.params
+    try {
+      const query = db.collection('products').doc(product_id);
+      let item = await query.get();
+      let response = item.data();
+      response.data = new Object();
+
+      const subcollection = query.collection('data')
+      await subcollection.get()
+        .then(snapshot => {
+          snapshot.forEach(doc => {
+            const { id } = doc;
+            const { inventory_level } = doc.data();
+            response.data[id] = parseInt(inventory_level);
+          });
+        })
+        .catch(err => {
+          console.log('Error getting documents', err);
+        });
+      return res.status(200).send(response);
+    }
+    catch(err) {
+      console.log(err);
+      return res.status(500).send(err);
+    }
+  })();
+})
+
+// app.get('/api/read', (req, res) => {
+//   (async () => {
+//     try {
+//       let query = db.collection('products');
+//       let response = [];
+//       await query.get()
+//         .then(snapshot => {
+//           let docs = snapshot.docs;
+//           docs.forEach(async(doc) => {
+//             const selectedItem = {
+//               product_id: doc.id,
+//               product_name: doc.data().product_name
+//             };
+//             selectedItem.data = new Object();
+
+//             const subcollection = query.doc(doc.id).collection('data')
+//             await subcollection.get()
+//               .then(snapshot => {
+//                 snapshot.forEach(doc => {
+//                   const { id } = doc;
+//                   const { inventory_level } = doc.data();
+//                   selectedItem.data[id] = parseInt(inventory_level);
+//                 });
+//               })
+//               .catch(err => {
+//                 console.log('Error getting documents', err);
+//               });
+//             console.log(selectedItem);
+//             response.push(selectedItem);
+//           });
+//         })
+//         .then(() => {
+//           console.log(response)
+//           return res.status(200).send(response);
+//         })
+//     }
+//     catch (error) {
+//       console.log(error);
+//       return res.status(500).send(error);
+//     }
+//     })();
+// });
+
 exports.app = functions.https.onRequest(app);
