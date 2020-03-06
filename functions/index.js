@@ -60,6 +60,7 @@ app.get('/api/read/:product_id', (req, res) => {
             const { inventory_level } = doc.data();
             response.data[id] = parseInt(inventory_level);
           });
+          return null;
         })
         .catch(err => {
           console.log('Error getting documents', err);
