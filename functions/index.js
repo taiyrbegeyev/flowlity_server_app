@@ -94,7 +94,8 @@ app.get('/api/read', (req, res) => {
                   const { id } = doc;
                   const { inventory_level } = doc.data();
                   const obj = {
-                    [id]: inventory_level
+                    date: id,
+                    inventory_level: inventory_level
                   }
                   selectedItem.data.push(obj)
                 });
