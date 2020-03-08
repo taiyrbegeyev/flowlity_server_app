@@ -86,14 +86,17 @@ app.get('/api/read', (req, res) => {
               product_id: doc.id,
               product_name: doc.data().product_name
             };
-            selectedItem.data = new Object();
+            selectedItem.data = [];
             const subcollection = query.doc(doc.id).collection('data');
             await subcollection.get()
               .then(snapshot => {
                 snapshot.forEach(doc => {
                   const { id } = doc;
                   const { inventory_level } = doc.data();
-                  selectedItem.data[id] = parseInt(inventory_level);
+                  const obj = {
+                    [id]: inventory_level
+                  }
+                  selectedItem.data.push(obj)
                 });
                 response.push(selectedItem);
                 return null;
