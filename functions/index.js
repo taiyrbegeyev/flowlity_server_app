@@ -42,81 +42,66 @@ app.post('/api/create', (req, res) => {
   })();
 });
 
-app.get('/api/read/:product_id', (req, res) => {
-  (async () => {
-    const { product_id } = req.params
-    try {
-      const query = db.collection('products').doc(product_id);
-      let item = await query.get();
-      let response = item.data();
-      response.product_id = item.id;
-      response.data = new Object();
-
-      const subcollection = query.collection('data')
-      await subcollection.get()
-        .then(snapshot => {
-          snapshot.forEach(doc => {
-            const { id } = doc;
-            const { inventory_level } = doc.data();
-            response.data[id] = parseInt(inventory_level);
-          });
-          return null;
-        })
-        .catch(err => {
-          console.log('Error getting documents', err);
+app.get('/api/read/:product_id', async(req, res) => {
+  const { product_id } = req.params
+  try {
+    const query = db.collection('products').doc(product_id);
+    let item = await query.get();
+    let response = item.data();
+    response.product_id = item.id;
+    response.data = new Object();
+    const subcollection = query.collection('data')
+    await subcollection.get()
+      .then(snapshot => {
+        snapshot.forEach(doc => {
+          const { id } = doc;
+          const { inventory_level } = doc.data();
+          response.data[id] = parseInt(inventory_level);
         });
-      return res.status(200).send(response);
-    }
-    catch(err) {
-      console.log(err);
-      return res.status(500).send(err);
-    }
-  })();
+        return null;
+      })
+      .catch(err => {
+        console.log('Error getting documents', err);
+      });
+    return res.status(200).send(response);
+  }
+  catch(err) {
+    console.log(err);
+    return res.status(500).send(err);
+  }
 })
 
-app.get('/api/read', (req, res) => {
-  (async () => {
-    try {
-      let query = db.collection('products');
-      let response = [];
-      await query.get()
-        .then(snapshot => {
-          snapshot.forEach(async(doc) => {
-            const selectedItem = {
-              product_id: doc.id,
-              product_name: doc.data().product_name
-            };
-            selectedItem.data = [];
-            const subcollection = query.doc(doc.id).collection('data');
-            await subcollection.get()
-              .then(snapshot => {
-                snapshot.forEach(doc => {
-                  const { id } = doc;
-                  const { inventory_level } = doc.data();
-                  const obj = {
-                    date: id,
-                    inventory_level: inventory_level
-                  }
-                  selectedItem.data.push(obj)
-                });
-                response.push(selectedItem);
-                return null;
-              })
-              .then(() => {
-                return res.status(200).send(response);
-              })
-              .catch(err => {
-                console.log('Error getting documents', err);
-              });
-          });
-          return null;
-        })
+app.get('/api/read', async(req, res) => {
+  try {
+    let query = db.collection('products');
+    let response = [];
+    let snapshot = await query.get()
+    for (doc of snapshot.docs) {
+      let selectedItem = {
+        product_id: doc.id,
+        product_name: doc.data().product_name
+      };
+      selectedItem.data = [];
+      const subcollection = query.doc(doc.id).collection('data');
+      // eslint-disable-next-line
+      let subsnapshot = await subcollection.get()
+      for (subdoc of subsnapshot.docs) {
+        const { id } = subdoc;
+        const { inventory_level } = subdoc.data();
+        const obj = {
+          date: id,
+          inventory_level: inventory_level
+        }
+        selectedItem.data.push(obj)
+      }
+      response.push(selectedItem);
     }
-    catch(err) {
-      console.log(err);
-      return res.status(500).send(err);
-    }
-  })();
+    return res.status(200).send(response);
+  }
+  catch(err) {
+    console.log(err);
+    return res.status(500).send(err);
+  }
 })
 
 exports.app = functions.https.onRequest(app);
